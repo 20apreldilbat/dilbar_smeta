@@ -1,0 +1,17 @@
+if(!name || !qty || !price) { alert("Barcha maydonlarni to'ldiring!"); return; }
+
+            db.push({ name, type, qty, price });
+            updateUI();
+
+            document.getElementById('itemName').value = "";
+            document.getElementById('itemQty').value = "";
+            document.getElementById('itemPrice').value = "";
+        }
+
+        function deleteItem(index) {
+            db.splice(index, 1);
+            updateUI();
+        }
+    </script>
+</body>
+</html>
