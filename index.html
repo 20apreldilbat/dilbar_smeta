@@ -1,3 +1,162 @@
+
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DILBAR Smeta Tizimi</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 10px; margin: 0; color: #333; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 12px; }
+        h2 { color: #1e293b; margin: 0 0 10px 0; font-size: 18px; text-align: center; }
+        .total-box { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px; }
+        .total-sum { font-size: 16px; color: #10b981; font-weight: bold; margin-top: 8px; text-align: right; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px 6px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+        th { background: #f8fafc; color: #64748b; }
+        .btn { background: #2563eb; color: white; border: none; padding: 10px; width: 100%; border-radius: 8px; font-size: 15px; font-weight: bold; margin-top: 8px; cursor: pointer; }
+        .btn-pdf { background: #10b981; margin-top: 12px; }
+        .btn-del { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; }
+        .btn-logout { background: #64748b; margin-top: 10px; }
+        input, select { width: 100%; padding: 8px; margin: 4px 0 10px 0; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        
+        /* Login oynasi uchun uslublar */
+        #loginScreen { max-width: 350px; margin: 50px auto; padding: 25px; }
+        #mainApp { display: none; } /* Avvaliga ilova berkitib turiladi */
+    </style>
+</head>
+<body>
+
+    <!-- 🔑 1-BOSQICH: LOGIN/PAROL OYNASI -->
+    <div class="card" id="loginScreen">
+        <h2>🔒 DILBAR Tizimiga Kirish</h2>
+        <p style="text-align: center; color: #64748b; font-size: 13px; margin: 0 0 15px 0;">Janob Xo'jayin xavfsiz boshqaruv paneli</p>
+        
+        <label><b>Login (Ism yoki Telefon)</b></label>
+        <input type="text" id="username" placeholder="Xo'jayin yoki Prorab">
+        
+        <label><b>Maxfiy Parol</b></label>
+        <input type="password" id="password" placeholder="••••••••">
+        
+        <button class="btn" onclick="checkLogin()">Tizimga Kirish</button>
+        <p id="loginError" style="color: red; font-size: 12px; text-align: center; display: none;">Xato: Login yoki parol noto'g'ri!</p>
+    </div>
+
+    <!-- 🏗️ 2-BOSQICH: ASOSIY ILOVA (FAQT TO'G'RI PAROLDA OCHILADI) -->
+    <div id="mainApp">
+        <div class="card">
+            <h2 style="text-align: left; color: #2563eb;">🏢 DILBAR Smeta Tizimi v3.0</h2>
+            <p style="color:#64748b; margin:0 0 10px 0; font-size:13px;">Xush kelibsiz, <b id="userDisplay"></b>!</p>
+            <div class="total-box"><span>Ustalarga to'lov:</span> <span id="workTotal">0 so'm</span></div>
+            <div class="total-box"><span>Material xarajati:</span> <span id="matTotal">0 so'm</span></div>
+            <div class="total-sum">Jami: <span id="grandTotal">0 so'm</span></div>
+            
+            <button class="btn btn-pdf" onclick="window.print()">📄 PDF / Chop etish</button>
+            <button class="btn btn-logout" onclick="logout()">🚪 Tizimdan chiqish</button>
+        </div>
+
+        <div class="card" id="inputCard">
+            <h2>➕ Yangi Xarajat Qo'shish</h2>
+            <input type="text" id="itemName" placeholder="Nomi (Masalan: Shpaklyovka)">
+            <select id="itemType">
+                <option value="MATERIAL">Material</option>
+                <option value="ISH">Ish / Usta haqi</option>
+            </select>
+            <input type="number" id="itemQty" placeholder="Miqdori">
+            <input type="number" id="itemPrice" placeholder="Narxi (so'mda)">
+
+
+<button class="btn" onclick="addItem()">Smetaga Qo'shish</button>
+        </div>
+
+        <div class="card">
+            <h2>📊 Joriy Xarajatlar</h2>
+            <table>
+                <thead>
+                    <tr><th>Nomi</th><th>Miqdori</th><th>Jami</th><th id="actionsHeader">X</th></tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Tizimga kirishi mumkin bo'lgan foydalanuvchilar (Hozircha vaqtincha baza)
+        const users = {
+            "xojoyin": "1111", // Janob Xo'jayin uchun login va parol
+            "prorab": "2222"   // Prorab uchun login va parol
+        };
+
+        let currentUser = "";
+        let db = [
+            { name: "Gisht terish", type: "ISH", qty: 150, price: 45000 },
+            { name: "Sement M-400", type: "MATERIAL", qty: 20, price: 65000 }
+        ];
+
+        function checkLogin() {
+            let userInput = document.getElementById('username').value.toLowerCase().trim();
+            let passInput = document.getElementById('password').value;
+
+            if (users[userInput] && users[userInput] === passInput) {
+                currentUser = userInput;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+                
+                // Rolga qarab huquqlarni belgilash
+                if(currentUser === "xojoyin") {
+                    document.getElementById('userDisplay').innerText = "Janob Xo'jayin";
+                    document.getElementById('inputCard').style.display = 'block';
+                } else {
+                    document.getElementById('userDisplay').innerText = "Prorab";
+                    // Agar prorab faqat ko'rishi kerak bo'lsa, xarajat qo'shishni bekitish mumkin
+                }
+                
+                updateUI();
+            } else {
+                document.getElementById('loginError').style.display = 'block';
+            }
+        }
+
+        function logout() {
+            document.getElementById('username').value = "";
+            document.getElementById('password').value = "";
+            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'block';
+            document.getElementById('loginError').style.display = 'none';
+        }
+
+        function updateUI() {
+            let tableBody = document.getElementById('tableBody');
+            let workTotal = 0, matTotal = 0;
+            tableBody.innerHTML = "";
+
+            db.forEach((item, index) => {
+                let total = item.qty * item.price;
+                if(item.type === "ISH") workTotal += total;
+                else matTotal += total;
+
+                let deleteBtn = currentUser === "xojoyin" ? `<td><button class="btn-del" onclick="deleteItem(${index})">X</button></td>` : `<td>-</td>`;
+
+                tableBody.innerHTML += `<tr>
+                    <td><b>${item.name}</b><br><small style="color:#94a3b8">${item.type}</small></td>
+                    <td>${item.qty} x ${item.price.toLocaleString()}</td>
+                    <td><b>${total.toLocaleString()}</b></td>
+                    ${deleteBtn}
+                </tr>`;
+            });
+
+            document.getElementById('workTotal').innerText = workTotal.toLocaleString() + " so'm";
+            document.getElementById('matTotal').innerText = matTotal.toLocaleString() + " so'm";
+            document.getElementById('grandTotal').innerText = (workTotal + matTotal).toLocaleString() + " so'm";
+        }
+
+        function addItem() {
+            let name = document.getElementById('itemName').value;
+            let type = document.getElementById('itemType').value;
+            let qty = parseFloat(document.getElementById('itemQty').value);
+            let price = parseFloat(document.getElementById('itemPrice').value);
+
+
 if(!name || !qty || !price) { alert("Barcha maydonlarni to'ldiring!"); return; }
 
             db.push({ name, type, qty, price });
